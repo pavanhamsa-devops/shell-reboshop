@@ -3,6 +3,8 @@
 USERID=$(id -u)
 LOGS_FOLDER="/var/log/shell-roboshop"
 LOGS_FILE="$LOGS_FOLDER/$0.log"
+SCRIPT_DIR=$PWD
+MYSQL_HOST=mysql.hamsa.sbs
 
 R="\e[31m"
 G="\e[32m"
@@ -26,13 +28,49 @@ VALIDATE(){
     fi
 }
 
-dnf install maven -y
+dnf install maven -y &>>$LOGS_FILE
+VALIDATE $? "Installing maven"
 
-useradd --system --home /app --shell /sbin/nologin --comment "roboshop system user" roboshop
+id roboshop &>>$LOGS_FILE
+if [ $? -ne 0 ]; then
+    useradd --system --home /app --shell /sbin/nologin --comment "roboshop system user" roboshop &>>$LOGS_FILE
+    VALIDATE $? "Creating system user"
+else
+    echo -e "roboshop user already exist... $Y Skipping $N"
+fi
 
-mkdir /app 
+mkdir -p /app 
+VALIDATE $? "Creating app directory"
 
-curl -L -o /tmp/shipping.zip https://roboshop-artifacts.s3.amazonaws.com/shipping-v3.zip 
+curl -o /tmp/shipping.zip https://roboshop-artifacts.s3.amazonaws.com/shipping-v3.zip &>>$LOGS_FILE
+VALIDATE $? "Downloading code"
+
 cd /app 
-unzip /tmp/shipping.zip
+VALIDATE $? "Moving to app directory"
 
+rm -rf /app/*
+VALIDATE $? "Removing existing code"
+
+unzip /tmp/shipping.zip &>>$LOGS_FILE
+VALIDATE $? "Unzip shipping code"
+
+cd /app 
+mvn clean package &>>$LOGS_FILE
+VALIDATE $? "Installing and building shipping"
+
+mv target/shipping-1.0.jar shipping.jar 
+VALIDATE $? "moving and renaming shipping"
+
+cp $SCRIPT_DIR/shipping.service /etc/systemd/system/shipping.service
+VALIDATE $? "Created systemctl service"
+
+dnf install mysql -y &>>$LOGS_FILE
+VALIDATE $? "Installing Mysql server"
+
+mysql -h $MYSQL_HOST -uroot -pRoboShop@1 < /app/db/schema.sql
+mysql -h $MYSQL_HOST -uroot -pRoboShop@1 < /app/db/app-user.sql 
+mysql -h $MYSQL_HOST -uroot -pRoboShop@1 < /app/db/master-data.sql
+
+systemctl enable shipping 
+systemctl start shipping
+VALIDATE $? "Started and enalbled shipping"
