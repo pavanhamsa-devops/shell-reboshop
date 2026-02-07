@@ -31,13 +31,6 @@ VALIDATE(){
 cp $SCRIPT_DIR/rabbitmq.repo /etc/yum.repos.d/rabbitmq.repo
 VALIDATE $? "Added rabbitmq repo"
 
-dnf install epel-release -y
-VALIDATE $? "enable epel"
-
-dnf install https://packagecloud.io/install/repositories/rabbitmq/erlang/script.rpm.sh -y
-dnf install https://packagecloud.io/install/repositories/rabbitmq/rabbitmq-server/script.rpm.sh -y
-VALIDATE $? "installing required repos"
-
 dnf install rabbitmq-server -y $LOGS_FILE
 VALIDATE $? "installed rabbitmq server"
 
