@@ -48,7 +48,7 @@ fi
 mkdir -p /app 
 VALIDATE $? "Creating directory"
 
-curl -o /tmp/catalogue.zip https://roboshop-artifacts.s3.amazonaws.com/catalogue-v3.zip &>>$LOGS_FILE
+curl -o /tmp/cart.zip https://roboshop-artifacts.s3.amazonaws.com/cart-v3.zip &>>$LOGS_FILE
 VALIDATE $? "Downloading code"
 
 cd /app 
@@ -57,32 +57,16 @@ VALIDATE $? "Moving to app directory"
 rm -rf /app/*
 VALIDATE $? "Removing existing code"
 
-unzip /tmp/catalogue.zip &>>$LOGS_FILE
-VALIDATE $? "Unzip catalogue code"
+unzip /tmp/cart.zip &>>$LOGS_FILE
+VALIDATE $? "Unzip cart code"
 
 npm install &>>$LOGS_FILE
 VALIDATE $? "Installing dependencies"
 
-cp $SCRIPT_DIR/catalogue.service /etc/systemd/system/catalogue.service
+cp $SCRIPT_DIR/cart.service /etc/systemd/system/cart.service
 VALIDATE $? "Created systemctl service"
 
 systemctl daemon-reload
-systemctl enable catalogue &>>$LOGS_FILE
-systemctl start catalogue
-VALIDATE $? "Started and enalbled catalogue"
-
-cp $SCRIPT_DIR/mongo.repo /etc/yum.repos.d/mongo.repo
-
-dnf install mongodb-mongosh -y
-
-INDEX=$(mongosh --host $MONGODB_HOST --quiet --eval 'db.getMongo().getDBNames().indexOf("catalogue")')
-
-if [ $INDEX -le 0 ]; then
-    mongosh --host $MONGODB_HOST </app/db/master-data.js
-    VALIDATE $? "Loading Products"
-else
-    echo -e "Products already loaded"
-fi
-
-systemctl restart catalogue
-VALIDATE $? "Restarted catalogue"
+systemctl enable cart &>>$LOGS_FILE
+systemctl start cart
+VALIDATE $? "Started and enalbled cart"
